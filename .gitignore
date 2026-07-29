@@ -1,0 +1,19 @@
+.env
+*.log
+.DS_Store
+
+# data volumes
+data/raw/*
+!data/raw/.gitkeep
+data/minio/
+data/postgis/
+data/geoserver/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# node (future frontend)
+node_modules/
+dist/
