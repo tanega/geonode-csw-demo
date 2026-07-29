@@ -5,8 +5,8 @@ version: "3.8"
 # GeoNode (docker-compose.yml upstream: https://github.com/GeoNode/geonode).
 # Nginx/Letsencrypt upstream sont volontairement omis — Traefik tient le rôle
 # de reverse proxy (décision actée étape 1).
-# ⚠️ Tags d'image et variables d'env à revalider contre la doc GeoNode de la
-# version ciblée avant le premier `docker compose up` (voir docs/step2-geonode-csw.md).
+# Tags d'image vérifiés contre l'API Docker Hub le 2026-07-29 (voir
+# docs/step2-geonode-csw.md pour le détail des corrections).
 
 services:
   traefik:
@@ -41,7 +41,7 @@ services:
       - geonode-net
 
   django:
-    image: geonode/geonode:latest-ubuntu-26.04
+    image: geonode/geonode:5.0.0
     environment:
       IS_CELERY: "False"
       SITEURL: "http://${DOMAIN}/"
@@ -73,7 +73,7 @@ services:
       - geonode-net
 
   celery:
-    image: geonode/geonode:latest-ubuntu-26.04
+    image: geonode/geonode:5.0.0
     environment:
       IS_CELERY: "True"
       SITEURL: "http://${DOMAIN}/"

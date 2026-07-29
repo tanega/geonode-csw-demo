@@ -9,6 +9,22 @@ GeoNode ciblée avant de lancer:
 - https://github.com/GeoNode/geonode/blob/master/docker-compose.yml
 - https://docs.geonode.org/ (section installation Docker)
 
+**Note:** le tag initial `geonode/geonode:latest-ubuntu-26.04` n'existe pas sur
+Docker Hub — corrigé en `geonode/geonode:5.0.0` (dernière release stable,
+vérifié via l'API Docker Hub le 2026-07-29). Tags confirmés existants:
+`geonode/geoserver:2.28.x-latest`, `geonode/postgis:15-3.5-latest`.
+
+## Jeux de données de test
+
+| Type | Fichier | Source |
+|---|---|---|
+| Vecteur | `data/raw/ne_110m_admin_0_countries.geojson` (~819 KB, polygones pays) | [Natural Earth](https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_110m_admin_0_countries.geojson) — domaine public |
+| Raster | `data/raw/lisbon_elevation.tif` (~905 KB, GeoTIFF WGS84, 547×421px, MNT) | [GeoTIFF/test-data](https://github.com/GeoTIFF/test-data) — `files/LisbonElevation.tif` |
+
+Vérifiés avec `ogrinfo`/`gdalinfo` en local. Ces deux fichiers ne sont pas
+versionnés (`.gitignore` exclut `data/raw/*`); à re-télécharger si besoin via
+les URLs ci-dessus.
+
 ## Démarrage
 
 ```bash
