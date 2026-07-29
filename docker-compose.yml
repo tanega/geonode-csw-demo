@@ -1,7 +1,46 @@
 version: "3.8"
 
-# Squelette d'infra — étape 1 (socle conteneurisé).
-# Images/versions à affiner à l'étape 2 (déploiement GeoNode + CSW).
+# Étape 2 — déploiement GeoNode + CSW.
+# Services django/celery/geoserver/db/redis calqués sur la stack officielle
+# GeoNode (docker-compose.yml + .env.sample upstream:
+# https://github.com/GeoNode/geonode). Nginx/Letsencrypt upstream sont
+# volontairement omis — Traefik tient le rôle de reverse proxy (décision
+# actée étape 1); conséquence: pas de service statique dédié, django sert
+# lui-même API/CSW (suffisant pour la vérification CSW, le rendu de l'UI web
+# GeoNode restera dégradé sans nginx).
+# Tags d'image + variables d'env vérifiés contre l'API Docker Hub et le
+# docker-compose.yml/.env.sample upstream le 2026-07-29 (voir
+# docs/step2-geonode-csw.md).
+
+x-geonode-env: &geonode-common-env
+  DJANGO_SETTINGS_MODULE: geonode.settings
+  SITEURL: "${SITEURL}/"
+  ALLOWED_HOSTS: "['django', '${DOMAIN}']"
+  SECRET_KEY: ${GEONODE_SECRET_KEY}
+  DATABASE_URL: postgis://${GEONODE_DATABASE_USER}:${GEONODE_DATABASE_PASSWORD}@db:5432/${GEONODE_DATABASE}
+  GEODATABASE_URL: postgis://${GEONODE_GEODATABASE_USER}:${GEONODE_GEODATABASE_PASSWORD}@db:5432/${GEONODE_GEODATABASE}
+  BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/1
+  GEONODE_LB_HOST_IP: django
+  GEONODE_LB_PORT: 8000
+  GEOSERVER_LB_HOST_IP: geoserver
+  GEOSERVER_LB_PORT: 8080
+  GEOSERVER_LOCATION: "http://geoserver:8080/geoserver/"
+  GEOSERVER_PUBLIC_LOCATION: "${SITEURL}/geoserver/"
+  GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
+  GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+  ADMIN_USERNAME: ${GEONODE_ADMIN_USER}
+  ADMIN_PASSWORD: ${GEONODE_ADMIN_PASSWORD}
+  ADMIN_EMAIL: ${GEONODE_ADMIN_EMAIL}
+  OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID}
+  OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET}
+
+x-geonode-volumes: &geonode-common-volumes
+  - statics:/mnt/volumes/statics
+  - geoserver-data-dir:/geoserver_data/data
+  - backup-restore:/backup_restore
+  - geonode-data:/data
+  - geonode-tmp:/tmp
 
 services:
   traefik:
@@ -18,31 +57,83 @@ services:
       - geonode-net
 
   db:
-    image: postgis/postgis:15-3.4
+    image: geonode/postgis:15-3.5-latest
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      GEONODE_DATABASE: ${GEONODE_DATABASE}
+      GEONODE_DATABASE_USER: ${GEONODE_DATABASE_USER}
+      GEONODE_DATABASE_PASSWORD: ${GEONODE_DATABASE_PASSWORD}
+      GEONODE_GEODATABASE: ${GEONODE_GEODATABASE}
+      GEONODE_GEODATABASE_USER: ${GEONODE_GEODATABASE_USER}
+      GEONODE_GEODATABASE_PASSWORD: ${GEONODE_GEODATABASE_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - dbdata:/var/lib/postgresql/data
+    networks:
+      - geonode-net
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    networks:
+      - geonode-net
+
+  django:
+    image: geonode/geonode:5.0.0
+    entrypoint: ["/usr/src/geonode/entrypoint.sh"]
+    command: "uwsgi --ini /usr/src/geonode/uwsgi.ini"
+    environment:
+      <<: *geonode-common-env
+      IS_CELERY: "False"
+    depends_on:
+      - db
+      - redis
+    volumes: *geonode-common-volumes
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.django.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.services.django.loadbalancer.server.port=8000"
+    networks:
+      - geonode-net
+
+  celery:
+    image: geonode/geonode:5.0.0
+    entrypoint: ["/usr/src/geonode/entrypoint.sh"]
+    command: "celery-cmd"
+    environment:
+      <<: *geonode-common-env
+      IS_CELERY: "True"
+    depends_on:
+      - django
+    volumes: *geonode-common-volumes
     networks:
       - geonode-net
 
   geoserver:
-    image: kartoza/geoserver:2.24.0
+    image: geonode/geoserver:2.28.x-latest
     environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      GEONODE_GEODATABASE: ${GEONODE_GEODATABASE}
+      GEONODE_GEODATABASE_USER: ${GEONODE_GEODATABASE_USER}
+      GEONODE_GEODATABASE_PASSWORD: ${GEONODE_GEODATABASE_PASSWORD}
+      GEONODE_LB_HOST_IP: django
+      GEONODE_LB_PORT: 8000
+      GEOSERVER_LB_HOST_IP: geoserver
+      GEOSERVER_LB_PORT: 8080
       GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
       GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+      GEOSERVER_JAVA_OPTS: ${GEOSERVER_JAVA_OPTS}
     depends_on:
-      - db
+      - django
+    volumes: *geonode-common-volumes
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.geoserver.rule=Host(`${DOMAIN}`) && PathPrefix(`/geoserver`)"
+      - "traefik.http.services.geoserver.loadbalancer.server.port=8080"
     networks:
       - geonode-net
-
-  # geonode: image/orchestration officielle à intégrer à l'étape 2
-  # (portail + pycsw pour l'endpoint CSW /catalogue/csw)
 
   minio:
     image: minio/minio:latest
@@ -74,5 +165,11 @@ networks:
   geonode-net:
 
 volumes:
-  pgdata:
+  dbdata:
+  redisdata:
+  statics:
+  geoserver-data-dir:
+  backup-restore:
+  geonode-data:
+  geonode-tmp:
   miniodata:
