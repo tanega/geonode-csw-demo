@@ -1,7 +1,12 @@
 version: "3.8"
 
-# Squelette d'infra — étape 1 (socle conteneurisé).
-# Images/versions à affiner à l'étape 2 (déploiement GeoNode + CSW).
+# Étape 2 — déploiement GeoNode + CSW.
+# Services django/celery/geoserver/db/redis calqués sur la stack officielle
+# GeoNode (docker-compose.yml upstream: https://github.com/GeoNode/geonode).
+# Nginx/Letsencrypt upstream sont volontairement omis — Traefik tient le rôle
+# de reverse proxy (décision actée étape 1).
+# ⚠️ Tags d'image et variables d'env à revalider contre la doc GeoNode de la
+# version ciblée avant le premier `docker compose up` (voir docs/step2-geonode-csw.md).
 
 services:
   traefik:
@@ -18,31 +23,94 @@ services:
       - geonode-net
 
   db:
-    image: postgis/postgis:15-3.4
+    image: geonode/postgis:15-3.5-latest
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - dbdata:/var/lib/postgresql/data
+    networks:
+      - geonode-net
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    networks:
+      - geonode-net
+
+  django:
+    image: geonode/geonode:latest-ubuntu-26.04
+    environment:
+      IS_CELERY: "False"
+      SITEURL: "http://${DOMAIN}/"
+      ALLOWED_HOSTS: "['${DOMAIN}']"
+      DATABASE_URL: postgis://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      GEODATABASE_URL: postgis://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${GEONODE_GEODATABASE}
+      BROKER_URL: redis://redis:6379/0
+      GEOSERVER_LOCATION: "http://geoserver:8080/geoserver/"
+      GEOSERVER_PUBLIC_LOCATION: "http://${DOMAIN}/geoserver/"
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+      ADMIN_USERNAME: ${GEONODE_ADMIN_USER}
+      ADMIN_PASSWORD: ${GEONODE_ADMIN_PASSWORD}
+      ADMIN_EMAIL: ${GEONODE_ADMIN_EMAIL}
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - statics:/mnt/volumes/statics
+      - geoserver-data-dir:/geoserver_data/data
+      - backup-restore:/backup_restore
+      - geonode-data:/data
+      - geonode-tmp:/tmp
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.django.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.services.django.loadbalancer.server.port=8000"
+    networks:
+      - geonode-net
+
+  celery:
+    image: geonode/geonode:latest-ubuntu-26.04
+    environment:
+      IS_CELERY: "True"
+      SITEURL: "http://${DOMAIN}/"
+      ALLOWED_HOSTS: "['${DOMAIN}']"
+      DATABASE_URL: postgis://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      GEODATABASE_URL: postgis://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${GEONODE_GEODATABASE}
+      BROKER_URL: redis://redis:6379/0
+      GEOSERVER_LOCATION: "http://geoserver:8080/geoserver/"
+      GEOSERVER_PUBLIC_LOCATION: "http://${DOMAIN}/geoserver/"
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
+    depends_on:
+      - django
+    volumes:
+      - statics:/mnt/volumes/statics
+      - geoserver-data-dir:/geoserver_data/data
+      - backup-restore:/backup_restore
+      - geonode-data:/data
+      - geonode-tmp:/tmp
     networks:
       - geonode-net
 
   geoserver:
-    image: kartoza/geoserver:2.24.0
+    image: geonode/geoserver:2.28.x-latest
     environment:
       GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER}
       GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD}
     depends_on:
-      - db
+      - django
+    volumes:
+      - geoserver-data-dir:/geoserver_data/data
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.geoserver.rule=Host(`${DOMAIN}`) && PathPrefix(`/geoserver`)"
+      - "traefik.http.services.geoserver.loadbalancer.server.port=8080"
     networks:
       - geonode-net
-
-  # geonode: image/orchestration officielle à intégrer à l'étape 2
-  # (portail + pycsw pour l'endpoint CSW /catalogue/csw)
 
   minio:
     image: minio/minio:latest
@@ -74,5 +142,11 @@ networks:
   geonode-net:
 
 volumes:
-  pgdata:
+  dbdata:
+  redisdata:
+  statics:
+  geoserver-data-dir:
+  backup-restore:
+  geonode-data:
+  geonode-tmp:
   miniodata:
