@@ -144,5 +144,6 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Host: geonode.localhost" \
   (profil `csw:Record`/Dublin Core); le mapping vers le profil ISO complet
   (`gmd:MD_Metadata`, cf. `full_metadata.xml`) n'a pas été vérifié pour ces
   nouveaux liens, seul le format DC utilisé dans `GetRecords` par défaut.
-- Étape 7 (endpoints + CORS) et étape 8 (validation bout-en-bout) restent à
-  faire.
+- Étape 7 (endpoints + CORS, voir [step7-endpoints-cors.md](step7-endpoints-cors.md))
+  et étape 8 (validation bout-en-bout, voir
+  [step8-e2e-validation.md](step8-e2e-validation.md)) sont maintenant faites.

@@ -34,6 +34,7 @@ x-geonode-env: &geonode-common-env
   ADMIN_EMAIL: ${GEONODE_ADMIN_EMAIL}
   OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID}
   OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET}
+  CORS_ALLOW_ALL_ORIGINS: "True"
 
 x-geonode-volumes: &geonode-common-volumes
   - statics:/mnt/volumes/statics
@@ -132,6 +133,12 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.geoserver.rule=Host(`${DOMAIN}`) && PathPrefix(`/geoserver`)"
       - "traefik.http.services.geoserver.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.geoserver-cors.headers.accessControlAllowOriginList=*"
+      - "traefik.http.middlewares.geoserver-cors.headers.accessControlAllowMethods=GET,HEAD,OPTIONS"
+      - "traefik.http.middlewares.geoserver-cors.headers.accessControlAllowHeaders=*"
+      - "traefik.http.middlewares.geoserver-cors.headers.accessControlMaxAge=100"
+      - "traefik.http.middlewares.geoserver-cors.headers.addVaryHeader=true"
+      - "traefik.http.routers.geoserver.middlewares=geoserver-cors"
     networks:
       - geonode-net
 

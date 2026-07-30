@@ -24,8 +24,8 @@ Projet d'apprentissage OGC CSW: découverte/recherche de métadonnées spatiales
 4. **Couche analytics/preview** (vérifié — voir [step4-analytics-preview.md](step4-analytics-preview.md)) — DuckDB (extension spatial, wrapper FastAPI dans `analytics/`) sur GeoParquet, TiTiler sur COG, tous deux lisant depuis MinIO.
 5. **Jeux de données test** (vérifié — voir [step5-dual-ingestion.md](step5-dual-ingestion.md)) — 1 dataset vecteur + 1 raster, ingérés en double (GeoServer via `importlayers` à l'étape 2 + version cloud-native COG/GeoParquet dans MinIO à l'étape 3).
 6. **Pont catalogage** (vérifié — voir [step6-catalog-bridge.md](step6-catalog-bridge.md)) — CSW référence aussi les assets cloud-natifs, via des `Link` GeoNode (lien externe dans metadata); STAC écarté pour ce projet d'apprentissage (voir doc pour la justification).
-7. **Exposition endpoints + CORS** — lister tous les endpoints consommables, config CORS pour le futur frontend externe.
-8. **Validation bout-en-bout** — CSW GetRecords → WFS GetFeature / preview COG-GeoParquet, avant de démarrer le frontend.
+7. **Exposition endpoints + CORS** (vérifié — voir [step7-endpoints-cors.md](step7-endpoints-cors.md)) — catalogue de tous les endpoints consommables (CSW, WMS/WFS/WCS, TiTiler, analytics, MinIO); CORS activé sur les 3 services qui ne l'avaient pas par défaut (Django/CSW, GeoServer, analytics) — TiTiler et MinIO l'étaient déjà.
+8. **Validation bout-en-bout** (vérifié — voir [step8-e2e-validation.md](step8-e2e-validation.md)) — CSW GetRecords → WFS GetFeature (vecteur), TiTiler preview (raster), et analytics DuckDB, rejoués via Traefik avec origine cross-site avant de démarrer le frontend.
 9. **Frontend standalone** — étape séparée: structure de l'app, choix des librairies/packages.
 
 ## Décisions actées
