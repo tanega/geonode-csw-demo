@@ -36,7 +36,7 @@ x-geonode-env: &geonode-common-env
   ADMIN_EMAIL: ${GEONODE_ADMIN_EMAIL}
   OAUTH2_CLIENT_ID: ${OAUTH2_CLIENT_ID}
   OAUTH2_CLIENT_SECRET: ${OAUTH2_CLIENT_SECRET}
-  CORS_ALLOW_ALL_ORIGINS: "True"
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
 
 x-geonode-volumes: &geonode-common-volumes
   - ./geonode-custom:/opt/geonode-custom:ro
@@ -194,6 +194,19 @@ services:
       - "traefik.http.services.duckdb-api.loadbalancer.server.port=8000"
       - "traefik.http.middlewares.duckdb-api-strip.stripprefix.prefixes=/analytics"
       - "traefik.http.routers.duckdb-api.middlewares=duckdb-api-strip"
+    networks:
+      - geonode-net
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_GEONODE_API_BASE: ${SITEURL}
+        VITE_OAUTH_CLIENT_ID: ${WEB_OAUTH_CLIENT_ID}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.rule=Host(`www.localhost`)"
+      - "traefik.http.services.web.loadbalancer.server.port=80"
     networks:
       - geonode-net
 
