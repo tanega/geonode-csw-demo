@@ -13,7 +13,9 @@ version: "3.8"
 # docs/step2-geonode-csw.md).
 
 x-geonode-env: &geonode-common-env
-  DJANGO_SETTINGS_MODULE: geonode.settings
+  DJANGO_SETTINGS_MODULE: geonode_demo_settings
+  PYTHONPATH: /opt/geonode-custom
+  AUTO_ASSIGN_REGISTERED_MEMBERS_TO_CONTRIBUTORS: "False"
   SITEURL: "${SITEURL}/"
   ALLOWED_HOSTS: "['django', '${DOMAIN}']"
   SECRET_KEY: ${GEONODE_SECRET_KEY}
@@ -37,6 +39,7 @@ x-geonode-env: &geonode-common-env
   CORS_ALLOW_ALL_ORIGINS: "True"
 
 x-geonode-volumes: &geonode-common-volumes
+  - ./geonode-custom:/opt/geonode-custom:ro
   - statics:/mnt/volumes/statics
   - geoserver-data-dir:/geoserver_data/data
   - backup-restore:/backup_restore
