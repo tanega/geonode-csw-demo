@@ -1,11 +1,29 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { createRouter, createWebHistory } from 'vue-router'
 
 import { mount } from '@vue/test-utils'
 import App from '../App.vue'
+import router from '../router'
 
 describe('App', () => {
-  it('mounts renders properly', () => {
-    const wrapper = mount(App)
-    expect(wrapper.text()).toContain('You did it!')
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('mounts renders properly', async () => {
+    const testRouter = createRouter({
+      history: createWebHistory(),
+      routes: router.getRoutes(),
+    })
+    testRouter.push('/')
+    await testRouter.isReady()
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [testRouter],
+      },
+    })
+    expect(wrapper.text()).toContain('GeoNode Demo')
   })
 })
