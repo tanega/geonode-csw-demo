@@ -2,6 +2,7 @@ import os
 
 import duckdb
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 MINIO_ENDPOINT = os.environ["MINIO_ENDPOINT"]
 MINIO_ROOT_USER = os.environ["MINIO_ROOT_USER"]
@@ -13,6 +14,11 @@ COUNTRIES_KEY = os.environ.get(
 COUNTRIES_URL = f"s3://{MINIO_BUCKET}/{COUNTRIES_KEY}"
 
 app = FastAPI(title="geonode-demo — DuckDB analytics")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET"],
+)
 
 
 def get_connection() -> duckdb.DuckDBPyConnection:
