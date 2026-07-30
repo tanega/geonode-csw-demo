@@ -151,15 +151,35 @@ services:
 
   titiler:
     image: ghcr.io/developmentseed/titiler:latest
+    environment:
+      AWS_S3_ENDPOINT: "minio:9000"
+      AWS_HTTPS: "NO"
+      AWS_VIRTUAL_HOSTING: "FALSE"
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      GDAL_DISABLE_READDIR_ON_OPEN: "EMPTY_DIR"
+    depends_on:
+      - minio
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.titiler.rule=Host(`${DOMAIN}`) && PathPrefix(`/titiler`)"
     networks:
       - geonode-net
 
-  # analytics (DuckDB): pas de service daemon officiel — à implémenter
-  # étape 4 comme petit wrapper (ex: FastAPI + duckdb) exposant les requêtes
-  # sur les fichiers GeoParquet stockés dans MinIO.
+  duckdb-api:
+    build: ./analytics
+    environment:
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    depends_on:
+      - minio
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.duckdb-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/analytics`)"
+    networks:
+      - geonode-net
 
 networks:
   geonode-net:

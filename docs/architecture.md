@@ -21,7 +21,7 @@ Projet d'apprentissage OGC CSW: découverte/recherche de métadonnées spatiales
 1. **Socle conteneurisé** — Compose de base: Traefik, PostGIS, GeoNode, GeoServer.
 2. **Déploiement GeoNode + CSW** (vérifié — voir [step2-geonode-csw.md](step2-geonode-csw.md)) — `GetCapabilities`/`GetRecords` validés sur `/catalogue/csw`, 2 datasets test publiés (vecteur + raster). Limitation connue: Traefik ne route pas encore (socket Docker bloqué, probablement Enhanced Container Isolation de Docker Desktop).
 3. **Storage cloud-natif secondaire** (vérifié — voir [step3-cloud-native-storage.md](step3-cloud-native-storage.md)) — MinIO démarré + bucket créé, scripts conversion (`gdal_translate` → COG, `ogr2ogr`/`gpq` → GeoParquet), 1 raster + 1 vecteur convertis et uploadés.
-4. **Couche analytics/preview** — DuckDB (extension spatial) sur GeoParquet, TiTiler sur COG.
+4. **Couche analytics/preview** (vérifié — voir [step4-analytics-preview.md](step4-analytics-preview.md)) — DuckDB (extension spatial, wrapper FastAPI dans `analytics/`) sur GeoParquet, TiTiler sur COG, tous deux lisant depuis MinIO.
 5. **Jeux de données test** — 1 dataset vecteur + 1 raster, ingérés en double (GeoServer + version cloud-native).
 6. **Pont catalogage** — s'assurer que CSW référence aussi les assets cloud-natifs (lien externe dans metadata, ou catalogue STAC complémentaire à évaluer).
 7. **Exposition endpoints + CORS** — lister tous les endpoints consommables, config CORS pour le futur frontend externe.
