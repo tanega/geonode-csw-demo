@@ -164,6 +164,8 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.titiler.rule=Host(`${DOMAIN}`) && PathPrefix(`/titiler`)"
       - "traefik.http.services.titiler.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.titiler-strip.stripprefix.prefixes=/titiler"
+      - "traefik.http.routers.titiler.middlewares=titiler-strip"
     networks:
       - geonode-net
 
@@ -180,6 +182,8 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.duckdb-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/analytics`)"
       - "traefik.http.services.duckdb-api.loadbalancer.server.port=8000"
+      - "traefik.http.middlewares.duckdb-api-strip.stripprefix.prefixes=/analytics"
+      - "traefik.http.routers.duckdb-api.middlewares=duckdb-api-strip"
     networks:
       - geonode-net
 
