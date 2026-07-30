@@ -141,8 +141,7 @@ curl -s -D - -X POST -H "Host: geonode.localhost" -H "Origin: http://localhost:5
   d'apprentissage (frontend first-party, pas d'exposition publique large),
   à ajouter si ce projet dépassait ce cadre (ex: `django-ratelimit` sur la
   vue, ou un forward-auth/rate-limit au niveau Traefik).
-- Le login (OAuth2 password grant, chemin 1 discuté précédemment) n'est
-  pas encore implémenté — reste à créer l'`Application` OAuth2 dédiée
-  (`authorization_grant_type=password`) dans `/admin/` et documenter le flux.
+- Le login (OAuth2 password grant, chemin 1 discuté précédemment) est
+  maintenant fait — voir [iam-option-a-login.md](iam-option-a-login.md).
 - Promotion editor (`contributors`) reste manuelle via `/people/`/`/admin/`
   — pas de self-service ni de workflow de demande côté frontend.
