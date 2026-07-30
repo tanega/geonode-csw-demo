@@ -5,6 +5,8 @@
 # data volumes
 data/raw/*
 !data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
 data/minio/
 data/postgis/
 data/geoserver/
