@@ -44,7 +44,7 @@ x-geonode-volumes: &geonode-common-volumes
 
 services:
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.7.9
     command:
       - "--configFile=/etc/traefik/traefik.yml"
     ports:
@@ -163,6 +163,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.titiler.rule=Host(`${DOMAIN}`) && PathPrefix(`/titiler`)"
+      - "traefik.http.services.titiler.loadbalancer.server.port=80"
     networks:
       - geonode-net
 
@@ -178,6 +179,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.duckdb-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/analytics`)"
+      - "traefik.http.services.duckdb-api.loadbalancer.server.port=8000"
     networks:
       - geonode-net
 

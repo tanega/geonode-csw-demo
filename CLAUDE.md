@@ -69,9 +69,19 @@ These were not obvious from upstream docs and cost real debugging time — worth
 - `geoserver` needs `GEOSERVER_JAVA_OPTS` explicitly set or the JVM fails to start with a cryptic `Could not find or load main class XX:ParallelGCThreads=4` error.
 - `django`/`celery` need `OAUTH2_CLIENT_ID`/`OAUTH2_CLIENT_SECRET` or the `invoke prepare` startup step throws `KeyError` and the container exits — silently, since `invoke`'s output goes to `invoke.log`, not `docker logs`.
 
-### Traefik is currently broken in this dev environment
+### Traefik was broken — fixed by pinning a newer image tag
 
-Traefik can't read the mounted docker socket (`Error response from daemon: ` in a retry loop, no routers ever register) — most likely Docker Desktop's **Enhanced Container Isolation** blocking socket access from containers. Not fixable from `docker-compose.yml` alone; needs a Docker Desktop settings change (or a `docker-socket-proxy`). Until resolved, everything (CSW checks, dataset imports) talks to `django` directly over the internal docker network (`docker exec ... -H "Host: django" http://localhost:8000/...` or `-hh http://django:8000` for management commands) instead of through port 80.
+Traefik used to fail reading the docker socket (`Error response from daemon: ` in a retry loop, no routers ever registered). Root cause: `traefik:v3.0` (built July 2024) bundles a docker-client library that negotiates/defaults to a Docker API version below this machine's Docker Desktop engine minimum (`MinAPIVersion` 1.40, Docker Desktop 4.80 / Engine 29.6.1). Every provider call to the daemon got a 400, and traefik's error-unwrap drops the daemon's message text, producing the misleading empty `Error response from daemon: `. It was **not** Enhanced Container Isolation (Business/Enterprise-only, not applicable on this install) and **not** a socket-path/permissions problem — both were verified fine (`/var/run/docker.sock` symlink and mount are correct).
+
+Fix: pin `image: traefik:v3.7.9` for the `traefik` service — routers now register correctly. Verify with:
+```bash
+curl -s http://localhost:${TRAEFIK_DASHBOARD_PORT:-8080}/api/http/routers
+```
+`titiler` and `duckdb-api` also needed explicit `traefik.http.services.<name>.loadbalancer.server.port` labels (`80` and `8000` respectively) — traefik can't infer the container port when the image declares no `EXPOSE`.
+
+If this recurs after a future Docker Desktop update: compare `docker version --format '{{.Server.APIVersion}}'` against what the pinned traefik tag's bundled docker-client supports, and bump the traefik tag first — don't re-chase socket/isolation settings.
+
+The CSW verification and import commands below still bypass Traefik/port 80 and talk to `django` directly over the internal docker network; that path remains the documented/tested one, since routing through Traefik on port 80 (which needs `DOMAIN`/hosts setup) hasn't been exercised end-to-end yet.
 
 ### Project stage tracking
 
