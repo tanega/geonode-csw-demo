@@ -14,9 +14,18 @@ There is no application code yet: this repo is currently pure infrastructure (do
 cp .env.example .env                                  # fill in real secrets first
 docker compose up -d db redis                          # wait ~10s for DB init (creates both DB roles)
 docker compose up -d django celery geoserver traefik    # ~2-3 min: migrations, prepare, fixtures, uwsgi
+docker compose up -d web                                # frontend (needs WEB_OAUTH_CLIENT_ID in .env, see below)
 docker compose logs -f django                           # watch startup
 docker compose ps -a                                     # check container status
 ```
+
+Frontend (`web` service) is served by Traefik at `http://www.localhost` —
+add `127.0.0.1 www.localhost` to `/etc/hosts` (doesn't auto-resolve on
+macOS the way some `.localhost` names do). `WEB_OAUTH_CLIENT_ID` in `.env`
+must come from `data/scripts/create_frontend_oauth_app.py` (see
+`docs/iam-option-a-login.md`) — Vite bakes it into the static bundle at
+*build* time, so `docker compose build web` must be re-run after changing
+it (a running-container env var change has no effect).
 
 CSW verification (see "Traefik is broken" below for why this bypasses port 80):
 
@@ -68,6 +77,21 @@ These were not obvious from upstream docs and cost real debugging time — worth
 - GeoNode needs **two separate Postgres roles/DBs**: `GEONODE_DATABASE*` (app metadata) and `GEONODE_GEODATABASE*` (GeoServer's vector datastore). The `geonode/postgis` image creates both natively from those env vars alone — no custom init script needed.
 - `geoserver` needs `GEOSERVER_JAVA_OPTS` explicitly set or the JVM fails to start with a cryptic `Could not find or load main class XX:ParallelGCThreads=4` error.
 - `django`/`celery` need `OAUTH2_CLIENT_ID`/`OAUTH2_CLIENT_SECRET` or the `invoke prepare` startup step throws `KeyError` and the container exits — silently, since `invoke`'s output goes to `invoke.log`, not `docker logs`.
+
+### web (frontend) container needs a real Node.js alongside bun
+
+`web/Dockerfile` builds with `oven/bun:1`, but `vue-tsc --build` (part of
+`bun run build`) failed inside the container with `TS2307: Cannot find
+module '*.vue'` for every single `.vue` import, while `bun run type-check`
+passed fine on the host. Root cause: `vue-tsc`'s `#!/usr/bin/env node`
+shebang needs a genuine Node.js — in the bun image `node` is just a symlink
+back to bun's own Node-compat shim (`/usr/local/bun-node-fallback-bin/node
+-> bun`), which doesn't support vue-tsc's `.vue` module-resolution
+patching. The host has a real Node.js on `PATH` (e.g. via nvm/pyenv), so it
+worked there and only broke in the container. Fixed by installing real
+`nodejs` via `apt-get` in the build stage before `bun install`/`bun run
+build`. If this resurfaces (e.g. switching base images), check `which node`
+inside the container isn't pointing back at bun.
 
 ### Traefik was broken — fixed by pinning a newer image tag
 
