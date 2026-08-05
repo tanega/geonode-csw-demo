@@ -143,5 +143,27 @@ curl -s -D - -X POST -H "Host: geonode.localhost" -H "Origin: http://localhost:5
   vue, ou un forward-auth/rate-limit au niveau Traefik).
 - Le login (OAuth2 password grant, chemin 1 discuté précédemment) est
   maintenant fait — voir [iam-option-a-login.md](iam-option-a-login.md).
-- Promotion editor (`contributors`) reste manuelle via `/people/`/`/admin/`
-  — pas de self-service ni de workflow de demande côté frontend.
+- Pas de self-service ni de workflow de demande de promotion côté
+  frontend (décision volontaire, cf. brainstorm IAM initial) — mais la
+  promotion elle-même n'est plus manuelle: voir ci-dessous.
+
+## Promotion vers `contributors`
+
+Toujours un geste admin (pas de self-service frontend, par design), mais
+reproductible via une vraie Django management command plutôt qu'un geste
+UI (`/people/`/`/admin/`) ou un script `manage.py shell < ...`:
+`geonode-custom/accounts_api/management/commands/create_contributor.py`.
+Django découvre les management commands de toute app dans
+`INSTALLED_APPS` — `accounts_api` y est déjà (cf. plus haut) — donc rien
+à changer dans `docker-compose.yml` ni à rebuilder.
+
+Idempotent: si l'utilisateur existe déjà, son mot de passe n'est pas
+touché, seul le groupe manquant est ajouté. Si nouveau, le mot de passe
+est demandé de façon sécurisée (`getpass`, même UX que
+`createsuperuser`) quand `--password` n'est pas fourni, pour ne jamais
+le faire transiter en clair dans l'historique shell/`ps`.
+
+```bash
+docker exec -it geonode-demo-django-1 bash -c \
+  "cd /usr/src/geonode && python manage.py create_contributor alice --email alice@example.com"
+```
