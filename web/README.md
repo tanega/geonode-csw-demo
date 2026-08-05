@@ -71,3 +71,26 @@ bun test:e2e --debug
 ```sh
 bun lint
 ```
+
+## Claude Code skills
+
+Vue/Vite/Pinia/Vitest/VueUse best-practices skills, installed via the
+[`skills`](https://skills.sh/) CLI, scoped to this directory
+(`web/.claude/skills`, symlinked from `web/.agents/skills`) so they only
+apply when working in the frontend. Already committed — re-run only to
+update or if a skill is missing:
+
+```sh
+npx skills add vuejs-ai/skills --skill \
+  vue-best-practices \
+  vue-router-best-practices \
+  vue-pinia-best-practices \
+  vue-testing-best-practices
+
+npx skills add antfu/skills --skill \
+  vue \
+  vite \
+  vitest \
+  pinia \
+  vueuse-functions
+```
