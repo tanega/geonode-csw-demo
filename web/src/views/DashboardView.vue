@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/button'
 
@@ -21,6 +21,9 @@ function onLogout() {
     <span class="bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-xs font-medium">
       {{ auth.isContributor ? 'Contributor' : 'Reader' }}
     </span>
+    <RouterLink v-if="auth.isContributor" to="/upload">
+      <Button>Upload dataset</Button>
+    </RouterLink>
     <Button variant="outline" @click="onLogout">Log out</Button>
   </main>
 </template>
