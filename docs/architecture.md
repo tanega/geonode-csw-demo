@@ -26,7 +26,14 @@ Projet d'apprentissage OGC CSW: découverte/recherche de métadonnées spatiales
 6. **Pont catalogage** (vérifié — voir [step6-catalog-bridge.md](step6-catalog-bridge.md)) — CSW référence aussi les assets cloud-natifs, via des `Link` GeoNode (lien externe dans metadata); STAC écarté pour ce projet d'apprentissage (voir doc pour la justification).
 7. **Exposition endpoints + CORS** (vérifié — voir [step7-endpoints-cors.md](step7-endpoints-cors.md)) — catalogue de tous les endpoints consommables (CSW, WMS/WFS/WCS, TiTiler, analytics, MinIO); CORS activé sur les 3 services qui ne l'avaient pas par défaut (Django/CSW, GeoServer, analytics) — TiTiler et MinIO l'étaient déjà.
 8. **Validation bout-en-bout** (vérifié — voir [step8-e2e-validation.md](step8-e2e-validation.md)) — CSW GetRecords → WFS GetFeature (vecteur), TiTiler preview (raster), et analytics DuckDB, rejoués via Traefik avec origine cross-site avant de démarrer le frontend.
-9. **Frontend standalone** — étape séparée: structure de l'app, choix des librairies/packages.
+9. **Frontend standalone** — étape séparée: structure de l'app, choix des librairies/packages. Auth (login/signup) + upload de dataset faits (Vue 3 + shadcn-vue + Pinia, `web/`). Reste, dans l'ordre:
+   1. Catalogue de jeux de données (`GET /api/v2/resources`, liste/recherche)
+   2. Page détail dataset (métadonnées + liens WMS/WFS/WCS)
+   3. Composant carte (lib à choisir — MapLibre GL JS pressenti) avec couches WMS GeoServer
+   4. Aperçu raster cloud-natif (tuiles XYZ TiTiler en overlay carte)
+   5. Aperçu analytics DuckDB sur un dataset vecteur cloud-natif
+   6. Redirection upload → page détail de la ressource créée
+   7. Tests composants (Vitest) + e2e (Playwright) au-delà du scaffold actuel
 
 ## Décisions actées
 
