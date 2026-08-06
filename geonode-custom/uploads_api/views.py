@@ -4,11 +4,17 @@ import subprocess
 import tempfile
 
 import requests
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import URLValidator
+from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from geonode.base.api.permissions import IsOwnerOrAdmin
+from geonode.base.models import Link, ResourceBase
 
 logger = logging.getLogger(__name__)
 
@@ -96,3 +102,38 @@ class ConvertParquetView(APIView):
                 )
 
         return Response(data=response.json(), status=response.status_code)
+
+
+class SourceLinkView(APIView):
+    """
+    Records a contributor-supplied "source" URL for a resource as a
+    `Link` (link_type="metadata") -- the same mechanism the GeoParquet
+    auto-mirror uses (see signals.py, docs/step6-catalog-bridge.md), so
+    it shows up in CSW GetRecords `dct:references` for free. No public
+    GeoNode API creates Links directly: ResourceBaseSerializer's `links`
+    field is read-only.
+    """
+
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+
+    def post(self, request):
+        resource_id = request.data.get("resource")
+        url = request.data.get("url")
+        if not resource_id or not url:
+            raise ValidationError("resource and url are required")
+
+        resource = get_object_or_404(ResourceBase, pk=resource_id)
+        self.check_object_permissions(request, resource)
+
+        try:
+            URLValidator()(url)
+        except DjangoValidationError:
+            raise ValidationError("url must be a valid URL")
+
+        link, _ = Link.objects.update_or_create(
+            resource=resource,
+            link_type="metadata",
+            name="Source",
+            defaults={"url": url, "extension": "", "mime": "text/html"},
+        )
+        return Response({"id": link.id, "url": link.url}, status=201)

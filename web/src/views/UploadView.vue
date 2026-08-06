@@ -1,107 +1,47 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { toast } from 'vue-sonner'
-import { useAuthStore } from '@/stores/auth'
-import { uploadDataset, getExecutionStatus, isParquetFile, UploadError } from '@/lib/api/uploads'
-import type { ExecutionStatus } from '@/lib/api/uploads'
-import { Button } from '@/components/ui/button'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { useDatasetUpload } from '@/composables/useDatasetUpload'
+import type { DatasetUploadPayload } from '@/composables/useDatasetUpload'
+import DatasetUploadForm from '@/components/upload/DatasetUploadForm.vue'
+import { FieldError } from '@/components/ui/field'
 
-const auth = useAuthStore()
+const { status, error, submitting, submit } = useDatasetUpload()
 
-const file = ref<File | null>(null)
-const status = ref<ExecutionStatus | null>(null)
-const error = ref<string | null>(null)
-const submitting = ref(false)
-
-const POLL_INTERVAL_MS = 2000
-
-function onFileChange(event: Event) {
-  file.value = (event.target as HTMLInputElement).files?.[0] ?? null
+function onSubmit(payload: DatasetUploadPayload) {
+  submit(payload)
 }
 
-const isParquet = computed(() => (file.value ? isParquetFile(file.value) : false))
-
-async function pollStatus(executionId: string) {
-  const token = auth.accessToken
-  if (!token) return
-
-  const result = await getExecutionStatus(executionId, token)
-  status.value = result.status
-
-  if (result.status === 'failed') {
-    error.value = result.log ?? 'Upload processing failed'
-    toast.error(error.value)
-    submitting.value = false
-    return
+// status flips to "finished" as soon as the file import completes, but
+// metadata/source-link are still being saved at that point (they run
+// after, see useDatasetUpload's submit()) -- keep showing progress until
+// submitting itself clears, so the page never claims "Done" while a save
+// is still in flight.
+const statusLabel = computed(() => {
+  if (submitting.value) {
+    const labels: Record<string, string> = { ready: 'Queued…', running: 'Processing…', finished: 'Saving metadata…', failed: '' }
+    return labels[status.value ?? ''] ?? ''
   }
-
-  if (result.status === 'finished') {
-    submitting.value = false
-    toast.success('Dataset uploaded.')
-    return
-  }
-
-  setTimeout(() => pollStatus(executionId), POLL_INTERVAL_MS)
-}
-
-async function onSubmit() {
-  if (!file.value || !auth.accessToken) return
-
-  error.value = null
-  status.value = null
-  submitting.value = true
-
-  try {
-    const executionId = await uploadDataset(file.value, auth.accessToken)
-    status.value = 'ready'
-    await pollStatus(executionId)
-  } catch (err) {
-    error.value = err instanceof UploadError ? err.message : 'Upload failed'
-    toast.error(error.value)
-    submitting.value = false
-  }
-}
+  return status.value === 'finished' ? 'Done — dataset uploaded.' : ''
+})
 </script>
 
 <template>
-  <main class="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-6 px-6">
+  <main class="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-6 px-6 py-12">
     <div class="flex flex-col items-center gap-1 text-center">
       <h1 class="text-2xl font-bold">Upload dataset</h1>
       <p class="text-muted-foreground text-sm text-balance">
-        Vector (GeoPackage, Shapefile, GeoJSON, GeoParquet) or raster (GeoTIFF) files
+        Add the file and its metadata — both help others discover it later.
       </p>
     </div>
-    <form class="flex flex-col gap-6" @submit.prevent="onSubmit">
-      <FieldGroup>
-        <Field>
-          <FieldLabel for="file">File</FieldLabel>
-          <input
-            id="file"
-            type="file"
-            required
-            class="border-input file:text-foreground rounded-md border px-3 py-2 text-sm file:mr-3 file:rounded-sm file:border-0 file:bg-transparent file:text-sm file:font-medium"
-            @change="onFileChange"
-          />
-        </Field>
-        <p v-if="isParquet && !error" class="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200">
-          GeoParquet isn't stored natively in GeoServer — this file will be
-          converted to GeoPackage for import. A GeoParquet copy is kept in
-          this app's cloud-native analytics layer, so you never lose the
-          original format.
-        </p>
-        <FieldError v-if="error" :errors="[error]" />
-        <p v-if="status && !error" class="text-muted-foreground text-center text-sm">
-          {{ { ready: 'Queued…', running: 'Processing…', finished: 'Done — dataset uploaded.', failed: '' }[status] }}
-        </p>
-        <Field>
-          <Button type="submit" :disabled="submitting || !file">
-            {{ submitting ? 'Uploading…' : 'Upload' }}
-          </Button>
-        </Field>
-      </FieldGroup>
-    </form>
+
+    <DatasetUploadForm :submitting="submitting" @submit="onSubmit" />
+
+    <FieldError v-if="error" :errors="[error]" />
+    <p v-if="statusLabel && !error" class="text-muted-foreground text-center text-sm">
+      {{ statusLabel }}
+    </p>
+
     <RouterLink to="/dashboard" class="text-muted-foreground text-center text-sm hover:underline">
       Back to dashboard
     </RouterLink>
