@@ -19,3 +19,6 @@ __pycache__/
 # node (future frontend)
 node_modules/
 dist/
+
+# Temporary files
+tmp/
