@@ -5,10 +5,13 @@ import tempfile
 from urllib.parse import urlparse
 
 import boto3
+import requests
 from celery import shared_task
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+DUCKDB_API_BASE = os.environ.get("DUCKDB_API_BASE", "http://duckdb-api:8000")
 
 
 def _geodatabase_pg_conn_string():
@@ -41,6 +44,12 @@ def mirror_dataset_to_geoparquet(dataset_id):
     Best-effort: the GeoServer-side import already succeeded by the time
     this runs (triggered from Dataset post_save), so a failure here
     should not surface as an upload failure to the user.
+
+    GDAL in this container has no Arrow/Parquet support (see
+    analytics/app.py), so the PostGIS table is exported to GPKG locally
+    (GDAL's PG + GPKG drivers are both present — GeoNode's own importer
+    already relies on them) and handed to duckdb-api for the GPKG->Parquet
+    step, which uses DuckDB's native Parquet writer instead of GDAL.
     """
     from geonode.base.models import Link
     from geonode.layers.models import Dataset
@@ -55,13 +64,13 @@ def mirror_dataset_to_geoparquet(dataset_id):
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            parquet_path = os.path.join(tmpdir, f"{dataset.name}.parquet")
+            gpkg_path = os.path.join(tmpdir, f"{dataset.name}.gpkg")
             result = subprocess.run(
                 [
                     "ogr2ogr",
                     "-f",
-                    "Parquet",
-                    parquet_path,
+                    "GPKG",
+                    gpkg_path,
                     f"PG:{_geodatabase_pg_conn_string()}",
                     dataset.name,
                 ],
@@ -69,8 +78,21 @@ def mirror_dataset_to_geoparquet(dataset_id):
                 text=True,
             )
             if result.returncode != 0:
-                logger.error("GeoParquet mirror failed for %s: %s", dataset.name, result.stderr)
+                logger.error("GeoParquet mirror: PostGIS->GPKG export failed for %s: %s", dataset.name, result.stderr)
                 return
+
+            with open(gpkg_path, "rb") as gpkg_file:
+                convert_response = requests.post(
+                    f"{DUCKDB_API_BASE}/convert/to-parquet",
+                    files={"file": (f"{dataset.name}.gpkg", gpkg_file, "application/geopackage+sqlite3")},
+                )
+            if not convert_response.ok:
+                logger.error("GeoParquet mirror: GPKG->Parquet conversion failed for %s: %s", dataset.name, convert_response.text)
+                return
+
+            parquet_path = os.path.join(tmpdir, f"{dataset.name}.parquet")
+            with open(parquet_path, "wb") as f:
+                f.write(convert_response.content)
 
             key = f"geoparquet/{dataset.name}.parquet"
             _upload_to_minio(parquet_path, key)
