@@ -17,11 +17,26 @@ export interface ExecutionRequest {
   log: string | null
 }
 
+const PARQUET_EXTENSIONS = ['.parquet', '.geoparquet']
+
+export function isParquetFile(file: File): boolean {
+  const name = file.name.toLowerCase()
+  return PARQUET_EXTENSIONS.some((ext) => name.endsWith(ext))
+}
+
 export async function uploadDataset(file: File, accessToken: string): Promise<string> {
   const body = new FormData()
   body.append('base_file', file)
 
-  const response = await fetch(`${API_BASE}/api/v2/uploads/upload`, {
+  // GeoNode's importer has no handler for GeoParquet: it's routed through
+  // a custom endpoint that converts to GeoPackage first (see
+  // geonode-custom/uploads_api/views.py::ConvertParquetView), then
+  // forwards into the same importer flow every other format uses.
+  const endpoint = isParquetFile(file)
+    ? `${API_BASE}/api/v2/custom/convert-parquet/`
+    : `${API_BASE}/api/v2/uploads/upload`
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}` },
     body,
