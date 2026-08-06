@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { Toaster } from '@/components/ui/sonner'
 
 const auth = useAuthStore()
 </script>
@@ -19,4 +20,5 @@ const auth = useAuthStore()
     </nav>
   </header>
   <RouterView />
+  <Toaster />
 </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
 import { uploadDataset, getExecutionStatus, UploadError } from '@/lib/api/uploads'
 import type { ExecutionStatus } from '@/lib/api/uploads'
@@ -29,12 +30,14 @@ async function pollStatus(executionId: string) {
 
   if (result.status === 'failed') {
     error.value = result.log ?? 'Upload processing failed'
+    toast.error(error.value)
     submitting.value = false
     return
   }
 
   if (result.status === 'finished') {
     submitting.value = false
+    toast.success('Dataset uploaded.')
     return
   }
 
@@ -54,6 +57,7 @@ async function onSubmit() {
     await pollStatus(executionId)
   } catch (err) {
     error.value = err instanceof UploadError ? err.message : 'Upload failed'
+    toast.error(error.value)
     submitting.value = false
   }
 }
