@@ -29,7 +29,7 @@ export async function uploadDataset(file: File, accessToken: string): Promise<st
 
   if (!response.ok) {
     const data = await response.json().catch(() => null)
-    throw new UploadError(data?.detail ?? 'Upload failed')
+    throw new UploadError(data?.errors?.join(', ') ?? data?.detail ?? 'Upload failed')
   }
 
   const data = await response.json()
