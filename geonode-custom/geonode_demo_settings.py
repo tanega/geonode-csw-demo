@@ -19,3 +19,11 @@ CORS_ALLOWED_ORIGINS = [
     for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
     if origin.strip()
 ]
+
+# geonode.settings hardcodes this at 100 MB (not os.getenv()-wrapped, unlike
+# its neighbors). It only seeds the upload_uploadsizelimit DB row the first
+# time it's needed -- on an existing DB (like this one) that row already
+# exists and must be updated directly (see UploadSizeLimit in Django admin,
+# or `UploadSizeLimit.objects.all().update(max_size=...)` via manage.py
+# shell); this constant only governs a fresh/reset DB's seed value.
+DEFAULT_MAX_UPLOAD_SIZE = 524288000  # 500 MB
