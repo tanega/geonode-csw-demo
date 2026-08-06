@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
-import { uploadDataset, getExecutionStatus, UploadError } from '@/lib/api/uploads'
+import { uploadDataset, getExecutionStatus, isParquetFile, UploadError } from '@/lib/api/uploads'
 import type { ExecutionStatus } from '@/lib/api/uploads'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -20,6 +20,8 @@ const POLL_INTERVAL_MS = 2000
 function onFileChange(event: Event) {
   file.value = (event.target as HTMLInputElement).files?.[0] ?? null
 }
+
+const isParquet = computed(() => (file.value ? isParquetFile(file.value) : false))
 
 async function pollStatus(executionId: string) {
   const token = auth.accessToken
@@ -68,7 +70,7 @@ async function onSubmit() {
     <div class="flex flex-col items-center gap-1 text-center">
       <h1 class="text-2xl font-bold">Upload dataset</h1>
       <p class="text-muted-foreground text-sm text-balance">
-        Vector (GeoPackage, Shapefile) or raster (GeoTIFF) files
+        Vector (GeoPackage, Shapefile, GeoJSON, GeoParquet) or raster (GeoTIFF) files
       </p>
     </div>
     <form class="flex flex-col gap-6" @submit.prevent="onSubmit">
@@ -83,6 +85,12 @@ async function onSubmit() {
             @change="onFileChange"
           />
         </Field>
+        <p v-if="isParquet && !error" class="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200">
+          GeoParquet isn't stored natively in GeoServer — this file will be
+          converted to GeoPackage for import. A GeoParquet copy is kept in
+          this app's cloud-native analytics layer, so you never lose the
+          original format.
+        </p>
         <FieldError v-if="error" :errors="[error]" />
         <p v-if="status && !error" class="text-muted-foreground text-center text-sm">
           {{ { ready: 'Queued…', running: 'Processing…', finished: 'Done — dataset uploaded.', failed: '' }[status] }}
