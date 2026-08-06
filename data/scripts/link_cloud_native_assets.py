@@ -10,6 +10,11 @@ computed at request time, not cached.
 Idempotent (get_or_create on resource+url) — safe to re-run after a fresh
 `importlayers` + step 3/4 setup.
 
+Superseded for new uploads by `uploads_api.tasks.mirror_dataset_to_geoparquet`
+(geonode-custom/uploads_api/, triggered automatically on every vector
+Dataset creation) — this script now only exists to backfill the two
+pre-existing example datasets below, created before that task existed.
+
 Run:
 docker cp data/scripts/link_cloud_native_assets.py \
   geonode-demo-django-1:/tmp/link_cloud_native_assets.py

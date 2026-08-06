@@ -6,7 +6,7 @@ import os
 
 from geonode.settings import *  # noqa: F401,F403
 
-INSTALLED_APPS = list(INSTALLED_APPS) + ["accounts_api"]
+INSTALLED_APPS = list(INSTALLED_APPS) + ["accounts_api", "uploads_api"]
 ROOT_URLCONF = "geonode_demo_urls"
 
 # geonode.settings only exposes an all-or-nothing CORS_ALLOW_ALL_ORIGINS env
