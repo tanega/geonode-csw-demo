@@ -11,5 +11,5 @@ class UploadsApiConfig(AppConfig):
         from uploads_api.signals import on_dataset_saved
 
         post_save.connect(
-            on_dataset_saved, sender=Dataset, dispatch_uid="uploads_api_mirror_geoparquet"
+            on_dataset_saved, sender=Dataset, dispatch_uid="uploads_api_on_dataset_saved"
         )
