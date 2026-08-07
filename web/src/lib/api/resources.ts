@@ -10,6 +10,14 @@ export interface ResourceLink {
   url: string
 }
 
+export interface ExtraMetadataEntry {
+  id: number
+  filter_header: string
+  field_name: string
+  field_label: string
+  field_value: string
+}
+
 export interface Resource {
   pk: string
   uuid: string
@@ -21,8 +29,15 @@ export interface Resource {
   detail_url: string
   srid: string | null
   date: string
+  date_type: string
+  attribution: string | null
+  data_quality_statement: string | null
+  category: { identifier: string; gn_description: string } | null
   owner: { username: string }
   links: ResourceLink[]
+  // Deferred field on GeoNode's DynamicModelSerializer -- only present
+  // when requested via `include[]=metadata` (see getResource).
+  metadata?: ExtraMetadataEntry[]
 }
 
 interface ResourceListResponse {
@@ -47,7 +62,10 @@ export async function listResources(page = 1, pageSize = 20): Promise<ResourceLi
 }
 
 export async function getResource(pk: string): Promise<Resource> {
-  const response = await fetch(`${API_BASE}/api/v2/resources/${pk}/`)
+  // `metadata` (the ExtraMetadata list -- e.g. "data last updated") is a
+  // deferred field on GeoNode's DynamicModelSerializer: omitted unless
+  // explicitly requested.
+  const response = await fetch(`${API_BASE}/api/v2/resources/${pk}/?include[]=metadata`)
   if (!response.ok) throw new ResourceError('Failed to fetch dataset')
   const data: { resource: Resource } = await response.json()
   return data.resource

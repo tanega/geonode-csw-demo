@@ -4,6 +4,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { getResource, ResourceError } from '@/lib/api/resources'
 import type { Resource, ResourceLink } from '@/lib/api/resources'
+import { formatDetailFields, type DetailField } from '@/lib/resourceDetailFields'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
@@ -31,6 +32,8 @@ const linkGroups = computed(() => {
   ]
   return groups.filter(([, items]) => items.length > 0)
 })
+
+const detailFields = computed<DetailField[]>(() => (resource.value ? formatDetailFields(resource.value) : []))
 
 onMounted(async () => {
   const pk = route.params.pk as string
@@ -60,7 +63,8 @@ onMounted(async () => {
         <Badge variant="secondary">{{ resource.subtype }}</Badge>
       </div>
       <p class="text-muted-foreground mt-1 text-sm">
-        Published {{ new Date(resource.date).toLocaleDateString() }} by {{ resource.owner.username }}
+        {{ resource.date_type === 'creation' ? 'Created' : 'Published' }}
+        {{ new Date(resource.date).toLocaleDateString() }} by {{ resource.owner.username }}
       </p>
 
       <img
@@ -71,6 +75,13 @@ onMounted(async () => {
       />
 
       <p v-if="resource.abstract" class="mt-6 text-sm">{{ resource.abstract }}</p>
+
+      <dl v-if="detailFields.length" class="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        <template v-for="field in detailFields" :key="field.label">
+          <dt class="text-muted-foreground font-medium">{{ field.label }}</dt>
+          <dd>{{ field.value }}</dd>
+        </template>
+      </dl>
 
       <div v-for="[groupName, links] in linkGroups" :key="groupName" class="mt-8">
         <h2 class="text-sm font-semibold">{{ groupName }}</h2>
