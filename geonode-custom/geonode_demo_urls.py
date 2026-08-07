@@ -2,7 +2,7 @@ from django.urls import path
 from geonode.urls import urlpatterns as geonode_urlpatterns
 
 from accounts_api.views import SignupView
-from uploads_api.views import ConvertParquetView, SourceLinkView
+from uploads_api.views import ConvertParquetView, ProviderFacetView, SourceLinkView
 
 urlpatterns = [
     path("api/v2/signup/", SignupView.as_view(), name="accounts_api_signup"),
@@ -15,5 +15,10 @@ urlpatterns = [
         "api/v2/custom/source-link/",
         SourceLinkView.as_view(),
         name="uploads_api_source_link",
+    ),
+    path(
+        "api/v2/custom/facets/provider/",
+        ProviderFacetView.as_view(),
+        name="uploads_api_provider_facet",
     ),
 ] + geonode_urlpatterns
