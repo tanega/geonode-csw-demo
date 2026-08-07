@@ -78,9 +78,9 @@ export function useDatasetUpload() {
     }
   }
 
-  async function submit(payload: DatasetUploadPayload) {
+  async function submit(payload: DatasetUploadPayload): Promise<number | null> {
     const accessToken = auth.accessToken
-    if (!accessToken) return
+    if (!accessToken) return null
 
     error.value = null
     status.value = null
@@ -103,9 +103,11 @@ export function useDatasetUpload() {
       }
 
       toast.success('Dataset uploaded.')
+      return resourceId
     } catch (err) {
       error.value = err instanceof UploadError ? err.message : 'Upload failed'
       toast.error(error.value)
+      return null
     } finally {
       submitting.value = false
     }
