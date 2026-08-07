@@ -6,6 +6,7 @@ import tempfile
 import requests
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser
@@ -15,6 +16,7 @@ from rest_framework.views import APIView
 
 from geonode.base.api.permissions import IsOwnerOrAdmin
 from geonode.base.models import Link, ResourceBase
+from geonode.facets.views import BaseFacetingView
 
 logger = logging.getLogger(__name__)
 
@@ -137,3 +139,41 @@ class SourceLinkView(APIView):
             defaults={"url": url, "extension": "", "mime": "text/html"},
         )
         return Response({"id": link.id, "url": link.url}, status=201)
+
+
+class ProviderFacetView(APIView):
+    """
+    GeoNode's facets API (geonode.facets) ships providers for
+    resource type, category, keyword, region, owner and group, but not
+    `attribution` -- there's no built-in way to list distinct provider
+    values with counts. This mirrors that API's shape (same
+    `filter{...}` prefiltering, via the same `_prefilter_topics` helper
+    the built-in facets use, so counts stay in sync with whatever other
+    facets/search are already applied) for just this one field.
+
+    No permission_classes set, matching geonode.facets.views -- GeoNode's
+    default DRF permission is AllowAny, and visibility is enforced by
+    `_prefilter_topics`'s `get_visible_resources` call, same as every
+    other facet.
+    """
+
+    def get(self, request):
+        qs = BaseFacetingView._prefilter_topics(request)
+        rows = (
+            qs.exclude(attribution__isnull=True)
+            .exclude(attribution__exact="")
+            .values("attribution")
+            .annotate(count=Count("attribution"))
+            .order_by("-count")
+        )
+        items = [{"key": r["attribution"], "label": r["attribution"], "count": r["count"]} for r in rows]
+
+        return Response(
+            {
+                "name": "provider",
+                "filter": "filter{attribution.in}",
+                "label": "Provider",
+                "type": "base",
+                "topics": {"total": len(items), "items": items},
+            }
+        )
