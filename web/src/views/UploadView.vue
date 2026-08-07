@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { useDatasetUpload } from '@/composables/useDatasetUpload'
 import type { DatasetUploadPayload } from '@/composables/useDatasetUpload'
 import DatasetUploadForm from '@/components/upload/DatasetUploadForm.vue'
 import { FieldError } from '@/components/ui/field'
 
+const router = useRouter()
 const { status, error, submitting, submit } = useDatasetUpload()
 
-function onSubmit(payload: DatasetUploadPayload) {
-  submit(payload)
+async function onSubmit(payload: DatasetUploadPayload) {
+  const resourceId = await submit(payload)
+  if (resourceId) {
+    router.push(`/datasets/${resourceId}`)
+  }
 }
 
 // status flips to "finished" as soon as the file import completes, but
