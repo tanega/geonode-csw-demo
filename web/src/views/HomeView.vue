@@ -5,8 +5,7 @@ import { toast } from 'vue-sonner'
 import { listResources, ResourceError } from '@/lib/api/resources'
 import type { Resource } from '@/lib/api/resources'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import DatasetCard from '@/components/dataset/DatasetCard.vue'
 
 const resources = ref<Resource[]>([])
 const loading = ref(true)
@@ -39,8 +38,11 @@ onMounted(async () => {
       </p>
     </div>
 
-    <div class="mt-10">
+    <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
       <Input v-model="search" placeholder="Search datasets by title…" class="max-w-sm" />
+      <RouterLink to="/search" class="text-muted-foreground text-sm hover:underline">
+        Advanced search &rarr;
+      </RouterLink>
     </div>
 
     <p v-if="loading" class="text-muted-foreground mt-8 text-center text-sm">Loading datasets…</p>
@@ -49,27 +51,7 @@ onMounted(async () => {
     </p>
 
     <div v-else class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <RouterLink
-        v-for="resource in filteredResources"
-        :key="resource.pk"
-        :to="{ name: 'dataset-detail', params: { pk: resource.pk } }"
-      >
-        <Card class="h-full overflow-hidden py-0 transition-shadow hover:shadow-md">
-          <img
-            v-if="resource.thumbnail_url"
-            :src="resource.thumbnail_url"
-            :alt="resource.title"
-            class="aspect-video w-full object-cover"
-          />
-          <CardHeader class="py-4">
-            <CardTitle class="text-base">{{ resource.title }}</CardTitle>
-            <Badge variant="secondary" class="mt-1 w-fit">{{ resource.subtype }}</Badge>
-          </CardHeader>
-          <CardContent v-if="resource.abstract" class="text-muted-foreground pb-4 text-sm">
-            {{ resource.abstract }}
-          </CardContent>
-        </Card>
-      </RouterLink>
+      <DatasetCard v-for="resource in filteredResources" :key="resource.pk" :resource="resource" />
     </div>
   </main>
 </template>
