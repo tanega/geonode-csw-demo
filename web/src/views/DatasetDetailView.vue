@@ -5,14 +5,18 @@ import { toast } from 'vue-sonner'
 import { getResource, ResourceError } from '@/lib/api/resources'
 import type { Resource, ResourceLink } from '@/lib/api/resources'
 import { formatDetailFields, type DetailField } from '@/lib/resourceDetailFields'
+import { useAuthStore } from '@/stores/auth'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 const route = useRoute()
+const auth = useAuthStore()
 
 const resource = ref<Resource | null>(null)
 const loading = ref(true)
 const notFound = ref(false)
+
+const canEdit = computed(() => auth.user?.preferred_username === resource.value?.owner.username)
 
 // Group the resource's raw link list into sections useful for exploring
 // what a GeoNode dataset actually exposes -- OGC services, downloadable
@@ -61,6 +65,9 @@ onMounted(async () => {
       <div class="flex flex-wrap items-center gap-3">
         <h1 class="text-2xl font-bold">{{ resource.title }}</h1>
         <Badge variant="secondary">{{ resource.subtype }}</Badge>
+        <Button v-if="canEdit" as-child variant="outline" size="sm" class="ml-auto">
+          <RouterLink :to="`/datasets/${resource.pk}/edit`">Edit metadata</RouterLink>
+        </Button>
       </div>
       <p class="text-muted-foreground mt-1 text-sm">
         {{ resource.date_type === 'creation' ? 'Created' : 'Published' }}

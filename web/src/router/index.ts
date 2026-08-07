@@ -15,6 +15,12 @@ const router = createRouter({
       component: () => import('@/views/DatasetDetailView.vue'),
     },
     {
+      path: '/datasets/:pk/edit',
+      name: 'dataset-edit',
+      component: () => import('@/views/DatasetEditView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/LoginView.vue'),
